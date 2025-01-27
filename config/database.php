@@ -30,16 +30,16 @@ return [
     */
 
     'connections' => [
-
         'sqlite' => [
             'driver' => 'sqlite',
             'url' => env('DB_URL'),
             'database' => env('DB_DATABASE', database_path('database.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
-            'busy_timeout' => null,
-            'journal_mode' => null,
-            'synchronous' => null,
+            'options' => [
+                PDO::ATTR_TIMEOUT => env('DB_TIMEOUT', 60),
+                //PDO::ATTR_BUSY_TIMEOUT => 60000, // 60 segundos
+            ],
         ],
 
         'mysql' => [

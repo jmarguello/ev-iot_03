@@ -139,6 +139,11 @@ return [
         Illuminate\Bus\BusServiceProvider::class,
         Illuminate\Validation\ValidationServiceProvider::class,
         Illuminate\Translation\TranslationServiceProvider::class,
+        Illuminate\Encryption\EncryptionServiceProvider::class,
+        Illuminate\Cookie\CookieServiceProvider::class,
+        Illuminate\Session\SessionServiceProvider::class,
+        Illuminate\Auth\AuthServiceProvider::class,
+        Illuminate\Hashing\HashServiceProvider::class,
     ],
 
 ];

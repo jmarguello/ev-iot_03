@@ -1,0 +1,3 @@
+endpoint viejo: http://blue.energyvision.com.ar/recibirAdv.php
+
+endpoint nuevo: http://ev-iot.energyvision.com.ar/api/data

@@ -4,7 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\DataProcessingService;
+use App\Jobs\ProcessRawMessage; 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class DataReceiverController extends Controller
 {
@@ -15,56 +18,65 @@ class DataReceiverController extends Controller
         $this->dataProcessingService = $dataProcessingService;
     }
 
-    /*     public function store(Request $request)
-    {
-        try {
-            $validatedData = $request->validate([
-                'mac_concentrador' => 'required|string|size:17',
-                'lecturas' => 'required|array',
-                'lecturas.*.mac_sensor' => 'required|string|size:17',
-                'lecturas.*.valor' => 'required|numeric',
-                'lecturas.*.nivel_senal' => 'required|integer',
-                'lecturas.*.nivel_bateria' => 'numeric|nullable',
-                'lecturas.*.cantidad_lecturas' => 'numeric|nullable'
-            ]);
-
-            $result = $this->dataProcessingService->processData($validatedData);
-            return response()->json(['message' => 'Datos recibidos correctamente'], 201);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
-        }
-    } */
     public function store(Request $request)
     {
         try {
-            $data = $request->all();
+            // Validación específica para el formato de tus mensajes
+            $validated = $request->validate([
+                'msg' => 'required|string|in:advData',
+                'gmac' => 'required|string|size:12',
+                'obj' => 'required|array',
+                'obj.*.type' => 'required|integer',
+                'obj.*.dmac' => 'required|string|size:12',
+                'obj.*.time' => 'required|string',
+                'obj.*.rssi' => 'required|integer',
+                'obj.*.vbatt' => 'required|integer',
+                'obj.*.temp' => 'required|numeric'
+            ]);
 
-            if ($data['msg'] !== 'advData') {
-                throw new \Exception('Formato de mensaje inválido');
-            }
+            // Guardar mensaje crudo
+            $rawMessageId = DB::table('raw_messages')->insertGetId([
+                'gmac' => $request->input('gmac'),
+                'payload' => json_encode($request->all()),
+                'processed' => false,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
 
-            $concentradorId = $data['gmac'];
-            $lecturas = [];
+            // Disparar el job de procesamiento
+            ProcessRawMessage::dispatch($rawMessageId);
 
-            foreach ($data['obj'] as $reading) {
-                $lecturas[] = [
-                    'mac_sensor' => $reading['dmac'],
-                    'valor' => $reading['temp'], // Temperatura como valor principal
-                    'nivel_senal' => $reading['rssi'],
-                    'nivel_bateria' => $reading['vbatt'] / 1000, // Convertir mV a V
-                    'cantidad_lecturas' => 1
-                ];
-            }
+            // Log para monitoreo
+            Log::info('Mensaje IoT recibido', [
+                'id' => $rawMessageId,
+                'gmac' => $request->input('gmac'),
+                'sensors' => count($request->input('obj'))
+            ]);
 
-            $validatedData = [
-                'mac_concentrador' => $concentradorId,
-                'lecturas' => $lecturas
-            ];
+            return response()->json([
+                'message' => 'Datos recibidos correctamente',
+                'id' => $rawMessageId
+            ], 201);
 
-            $result = $this->dataProcessingService->processData($validatedData);
-            return response()->json(['message' => 'Datos recibidos correctamente'], 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::warning('Validación fallida en mensaje IoT', [
+                'errors' => $e->errors(),
+                'payload' => $request->all()
+            ]);
+            return response()->json([
+                'error' => 'Formato de datos inválido',
+                'details' => $e->errors()
+            ], 422);
+
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            Log::error('Error al procesar mensaje IoT', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'payload' => $request->all()
+            ]);
+            return response()->json([
+                'error' => 'Error interno del servidor'
+            ], 500);
         }
     }
 }

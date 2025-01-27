@@ -10,6 +10,8 @@ class LecturaActual extends Model
 {
     protected $table = 'lecturas_actuales';
 
+    public $timestamps = true;
+    
     protected $fillable = [
         'sensor_id',
         'valor',

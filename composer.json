@@ -10,9 +10,10 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "illuminate/encryption": "*",
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/breeze": "^2.3",
-        "laravel/framework": "^11.31",
+        "laravel/framework": "^11.40",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.9",
         "tightenco/ziggy": "^2.0"
